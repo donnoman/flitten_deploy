@@ -12,3 +12,4 @@ source "http://gems.github.com"
 
 # Stack
 gem "capistrano", "2.5.9"
+gem "deprec", "2.1.4", :git => "git://github.com/donnoman/deprec.git", :branch => "master"

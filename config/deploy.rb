@@ -1,6 +1,7 @@
-set :application, "Flitten"
+set :application, "flitten"
 set :repository,  "git@github.com:donnoman/flitten.git"
 set :branch, "testing"
+set :user, "root"
 
 set :deploy_to, "/app/#{application}"
 
@@ -9,6 +10,12 @@ set :scm, :git
 role :web, "server", :no_release => true     # Your HTTP server, Apache/etc
 role :app, "server"                          # This may be the same as your `Web` server
 role :db,  "server", :primary => true, :no_release => true
+
+
+after "deploy:setup" do
+  deprec.ree.install
+end
+
 
 # Deploy scripts were separated from the app to allow them to be checked out
 # separately and run locally against a specific role. ie: mysql and reverse proxies

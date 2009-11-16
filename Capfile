@@ -1,4 +1,4 @@
-require 'vendor/gems/environment.rb'
+require 'vendor/bundler_gems/environment.rb'
 Bundler.require_env :deploy 
 
 load 'deploy' if respond_to?(:namespace) # cap2 differentiator
