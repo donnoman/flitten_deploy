@@ -4,8 +4,11 @@ set :branch, "testing"
 set :user, "root"
 
 set :deploy_to, "/app/#{application}"
+set :deploy_via, :remote_cache
 
 set :scm, :git
+
+require 'config/secrets'
 
 role :web, "server", :no_release => true     # Your HTTP server, Apache/etc
 role :app, "server"                          # This may be the same as your `Web` server
@@ -13,9 +16,39 @@ role :db,  "server", :primary => true, :no_release => true
 
 
 after "deploy:setup" do
+  #Every Role should have the following:
   deprec.ree.install
+  gem2.update_system #Bundler requires an updated rubygems
+  gem2.install "bundler", "0.7.0" 
+  deprec.git.install
 end
 
+# We hook into start so these task chains are only inserted when the :only task
+# has been used on the command line.
+on :start, :only => :deploy do
+  after "deploy:update_code" do
+    bundler.dependencies.default
+    run "cd #{latest_release}; gem bundle"
+  end
+end
+
+namespace :bundler do
+  # These dependencies can change as items are added to the bundle
+  namespace :dependencies do
+    task :default do
+      flitten
+      flitten_deploy
+    end
+    desc "System Dependencies to compile bundled gems for flitten"
+    task :flitten do
+      apt.install({:base => %w(libxml2-dev libxslt-dev libxslt-ruby)}, :stable, :roles => [:app])
+    end
+    desc "System Dependencies to compile bundled gems for flitten deploy scripts"
+    task :flitten_deploy do
+      #none yet
+    end
+  end
+end
 
 # Deploy scripts were separated from the app to allow them to be checked out
 # separately and run locally against a specific role. ie: mysql and reverse proxies
@@ -41,10 +74,11 @@ end
 # if you're still using the script/reapear helper you will need
 # these http://github.com/rails/irs_process_scripts
 
-# namespace :deploy do
-#   task :start {}
-#   task :stop {}
-#   task :restart, :roles => :app, :except => { :no_release => true } do
-#     run "#{try_sudo} touch #{File.join(current_path,'tmp','restart.txt')}"
-#   end
-# end
+# Disabling this until I build a unicorn deprec plugin
+namespace :deploy do
+  %w(start stop restart migrate).each do |name|
+    task name.to_sym do
+      #nothing
+    end
+  end
+end
