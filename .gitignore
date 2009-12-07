@@ -3,6 +3,7 @@ tmp
 log
 bin
 vendor/bundler_gems/gems
+vendor/bundler_gems/dirs
 vendor/bundler_gems/specifications
 vendor/bundler_gems/doc
 vendor/bundler_gems/environment.rb

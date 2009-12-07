@@ -1,35 +1,41 @@
+require 'deprec'
+
 set :application, "flitten"
 set :repository,  "git@github.com:donnoman/flitten.git"
-set :branch, "testing"
+set :branch, "master"
 set :user, "root"
 
 set :deploy_to, "/app/#{application}"
 set :deploy_via, :remote_cache
 
+ssh_options[:forward_agent] = true
+
 set :scm, :git
+
+set :ruby_vm_type, :mri
+set :app_server_type, :webroar
+set :web_server_type, :none
+set :webroar_import_configuration, false
 
 require 'config/secrets'
 
-role :web, "server", :no_release => true     # Your HTTP server, Apache/etc
-role :app, "server"                          # This may be the same as your `Web` server
-role :db,  "server", :primary => true, :no_release => true
+role :web, '', :no_release => true
+#role :web, "server.flitten.com", :no_release => true     # Your HTTP server, Apache/etc
+role :app, "server.flitten.com"                          # This may be the same as your `Web` server
+role :db,  "server.flitten.com", :primary => true, :no_release => true
 
-
-after "deploy:setup" do
-  #Every Role should have the following:
-  deprec.ree.install
-  gem2.update_system #Bundler requires an updated rubygems
-  gem2.install "bundler", "0.7.0" 
-  deprec.git.install
-end
 
 # We hook into start so these task chains are only inserted when the :only task
 # has been used on the command line.
-on :start, :only => :deploy do
+on :start, :only => [:deploy,"deploy:migrations"] do
   after "deploy:update_code" do
     bundler.dependencies.default
-    run "cd #{latest_release}; gem bundle"
+    bundler.bundle
   end
+end
+
+on :start, :only => ["deploy:setup"] do
+  top.deprec.rails.install_stack
 end
 
 namespace :bundler do
@@ -40,13 +46,17 @@ namespace :bundler do
       flitten_deploy
     end
     desc "System Dependencies to compile bundled gems for flitten"
-    task :flitten do
+    task :flitten, :except => {:no_release => true} do
       apt.install({:base => %w(libxml2-dev libxslt-dev libxslt-ruby)}, :stable, :roles => [:app])
     end
     desc "System Dependencies to compile bundled gems for flitten deploy scripts"
-    task :flitten_deploy do
+    task :flitten_deploy, :except => {:no_release => true} do
       #none yet
     end
+  end
+
+  task :bundle, :except => {:no_release => true} do
+    run "cd #{latest_release}; gem bundle --cached"
   end
 end
 
@@ -78,6 +88,24 @@ end
 namespace :deploy do
   %w(start stop restart migrate).each do |name|
     task name.to_sym do
+      #nothing
+    end
+  end
+end
+
+namespace :deprec do
+  namespace :rails do
+    task :install_stack do
+      top.deprec.ruby.install
+      top.deprec.git.install
+      top.deprec.app.install        # Uses value of app_server_type
+      gem2.update_system #Bundler requires an updated rubygems
+      gem2.install "bundler", "0.7.0"
+    end
+    task :activate_services do
+      top.deprec.app.activate
+    end
+    task :setup_database, :roles => :db do
       #nothing
     end
   end
